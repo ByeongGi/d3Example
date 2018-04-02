@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewContainerRef } from '@angular/core';
-import { time, select, scale, svg, extent } from 'd3';
+import { time, select, scale, svg, extent, max } from 'd3';
 import { rawData } from './data';
 export interface RowData {
   date: Date;
@@ -12,15 +12,13 @@ export interface RowData {
   styleUrls: ['./chart.component.css']
 })
 export class ChartComponent implements OnInit {
-
-
   public xMargin = 30;
   public yMargin = 20;
-  public svgWidth = 700;
-  public svgHeight = 200;
-  public data;
+  public svgWidth = 400;
+  public svgHeight = 100;
+  public data : RowData;
 
-  public lastPrice = 250;
+  public lastPrice = 800;
 
   constructor(private viewRef: ViewContainerRef) {
     // const parseDate = time.format('%Y-%m-%d %H:%M:%S');
@@ -28,7 +26,7 @@ export class ChartComponent implements OnInit {
     rawData.forEach(function(d) {
       d.date = new Date(d.date);
       d.value = +d.value;
-      console.log(d);
+      // console.log(d);
     });
     this.data = rawData;
   }
@@ -45,21 +43,45 @@ export class ChartComponent implements OnInit {
 
   initLine() {
     const el = this.viewRef.element.nativeElement.querySelector('div');
-    console.log(el);
+    // console.log(el);
 
-    const x = scale.linear().range([0, this.svgWidth]);
-    const y = scale.linear().range([this.svgHeight, 0]);
+    const _maxX = max(this.data, d => d.date);
+    const _maxY =  extent(this.data, d => {
+      return d.value;
+    });
 
-    x.domain(
-      extent(this.data, d => {
-        return d.date;
-      })
-    );
-    y.domain(
-      extent(this.data, d => {
-        return d.value;
-      })
-    );
+    const x = scale
+      .linear()
+      .domain(
+        extent(this.data, d => {
+          return d.date;
+        })
+      )
+      .range([0, this.svgWidth]);
+
+    const y = scale
+      .linear()
+      .domain(
+        extent(this.data, d => {
+          return d.value;
+        })
+      )
+      .range([this.svgHeight, 0]);
+
+    console.log(x(_maxX));
+    // console.log(_maxY[1]);
+    // console.log(y(971));
+
+    // x.domain(
+    //   extent(this.data, d => {
+    //     return d.date;
+    //   })
+    // );
+    // y.domain(
+    //   extent(this.data, d => {
+    //     return d.value;
+    //   })
+    // );
 
     // Line Chart
     const _line = svg
@@ -84,7 +106,7 @@ export class ChartComponent implements OnInit {
         return y(d.value);
       });
 
-    // Area Chart Bottom 
+    // Area Chart Bottom
     const _areaBottom = svg
       .area<RowData>()
       .interpolate('basis')
@@ -100,14 +122,17 @@ export class ChartComponent implements OnInit {
       .append('svg:svg')
       .attr('width', this.svgWidth)
       .attr('height', this.svgHeight)
-      .append('g')
-      .attr('transform', 'translate(0, 2)');
-
-     
+      .append('g');
+    // .attr('transform', 'translate(10, 10)');
 
     // ClipPath 생성
-    this.createClipPath(_svg, this.svgWidth, y(this.lastPrice));
-    this.createClipPathBottom(_svg, this.svgWidth, y(this.lastPrice));
+    this.createClipPath(_svg, this.svgWidth, y(this.lastPrice) + 22);
+    this.createClipPathBottom(
+      _svg,
+      this.svgWidth,
+      this.svgHeight,
+      y(this.lastPrice) + 22
+    );
 
     // RED 라인 , Area
     _svg
@@ -158,7 +183,7 @@ export class ChartComponent implements OnInit {
       .attr('ry', 0);
   }
 
-  public createClipPathBottom(svgEl, width, height) {
+  public createClipPathBottom(svgEl, width, height, yheight) {
     return svgEl
       .append('clipPath')
       .attr('id', 'bottom-area')
@@ -166,7 +191,7 @@ export class ChartComponent implements OnInit {
       .attr('width', width)
       .attr('height', height)
       .attr('x', 0)
-      .attr('y', height)
+      .attr('y', yheight)
       .attr('rx', 0)
       .attr('ry', 0);
   }
